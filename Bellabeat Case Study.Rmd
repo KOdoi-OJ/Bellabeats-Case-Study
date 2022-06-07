@@ -1,0 +1,394 @@
+---
+title: "Bellabeat Case Study"
+author: "Kwame Otchere"
+date: '2022-06-05'
+output: 
+  html_document: 
+    toc: yes
+    keep_md: yes
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Scenario Background and Introduction
+
+Welcome to the Bellabeat data analysis case study! In order to answer
+the key business questions, the steps of the data analysis process will
+be followed: ask, prepare, process, analyze, share, and act. Bellabeat,
+a high-tech manufacturer of health-focused products for women, is a
+successful small company, but they have the potential to become a larger
+player in the global smart device market. Urška Sršen, cofounder and
+Chief Creative Oﬃcer of Bellabeat, believes that analyzing smart device
+ﬁtness data could help unlock new growth opportunities for the company.
+The objective to focus on one of Bellabeat's products and analyze smart
+device data to gain insight into how consumers are using their smart
+devices. The insights will then help guide marketing strategy for the
+company.
+
+# Characters and products
+
+## Characters
+
+-   Urška Sršen: Bellabeat's cofounder and Chief Creative Oﬃcer
+-   Sando Mur: Mathematician and Bellabeat's cofounder; key member of
+    the Bellabeat executive team
+-   Bellabeat marketing analytics team: A team of data analysts
+    responsible for collecting, analyzing, and reporting data that helps
+    guide Bellabeat's marketing strategy. You joined this team six
+    months ago and have been busy learning about Bellabeat''s mission
+    and business goals --- as well as how you, as a junior data analyst,
+    can help Bellabeat achieve them.
+
+## Products
+
+-   Bellabeat app: The Bellabeat app provides users with health data
+    related to their activity, sleep, stress, menstrual cycle, and
+    mindfulness habits. This data can help users better understand their
+    current habits and make healthy decisions. The Bellabeat app
+    connects to their line of smart wellness products.
+-   Leaf: Bellabeat's classic wellness tracker can be worn as a
+    bracelet, necklace, or clip. The Leaf tracker connects to the
+    Bellabeat app to track activity, sleep, and stress.
+-   Time: This wellness watch combines the timeless look of a classic
+    timepiece with smart technology to track user activity, sleep, and
+    stress. The Time watch connects to the Bellabeat app to provide you
+    with insights into your daily wellness.
+-   Spring: This is a water bottle that tracks daily water intake using
+    smart technology to ensure that you are appropriately hydrated
+    throughout the day. The Spring bottle connects to the Bellabeat app
+    to track your hydration levels.
+-   Bellabeat membership: Bellabeat also oﬀers a subscription-based
+    membership program for users. Membership gives users 24/7 access to
+    fully personalized guidance on nutrition, activity, sleep, health
+    and beauty, and mindfulness based on their lifestyle and goals.
+
+# Ask Phase
+
+## Summary of Business Task
+
+Sršen asks you to analyze smart device usage data in order to gain
+insight into how consumers use non-Bellabeat smart devices. The business
+task is to use the insights from this analysis to craft a suitable
+marketing strategy for Bellabeat. This can be done by analyzing the
+smart device usage, identify trends and make recommendations on how the
+findings will help Bellabeat craft an applicable marketing strategy. The
+key stakeholders are the characters mentioned above.
+
+# Prepare and Process Phases
+
+## Description of Data Sources Used
+
+The dataset used is the [FitBit Fitness Tracker Data](https://www.kaggle.com/arashnic/fitbit) (CC0: Public Domain,
+dataset made available through Mobius). It contains personal ﬁtness
+tracker from thirty Fitbit users. Thirty eligible Fitbit users consented
+to the submission of personal tracker data, including minute-level
+output for physical activity, heart rate, and sleep monitoring. It
+includes information about daily activity, steps, and heart rate that
+can be used to explore users' habits.
+
+## Observations and Limitations of the Dataset
+
+-   33 records are not large enough a sample size to draw an actionable
+    conclusion with high accuracy for the whole. This may raise concerns
+    about data bias.
+-   The absence of demographic data also means that a clearer picture
+    cannot be painted on the fairness and equity of the dataset
+-   The joined dataset which has 24 records is even smaller, but will be
+    used since it presents a fairly complete image of the users' usage
+    activity
+-   Weight logging is low among the users, so the data on weight logging
+    was not used.
+
+## Data Cleaning and Manipulation
+
+R will be used for the whole analysis process. R Markdown will be used
+for documentation of the process.
+
+To start with, the libraries most likely to be used are loaded.
+
+```{r Loading the Libraries, warning=FALSE}
+library("tidyverse")
+library("lubridate")
+library("dplyr")
+library("ggplot2")
+library("skimr")
+library("janitor")
+library("scales")
+library("ggpubr")
+```
+
+The dataset is then loaded; my analysis will focus on the daily stats,
+so only the daily records are loaded.
+
+```{r Loading the Files, warning=FALSE}
+daily_activity <- read_csv("FitBit_Fitness_Tracker_Data/dailyActivity_merged.csv")
+view(daily_activity)
+
+daily_intensity <- read_csv("FitBit_Fitness_Tracker_Data/dailyIntensities_merged.csv")
+view(daily_intensity)
+
+sleep_records <- read_csv("FitBit_Fitness_Tracker_Data/sleepDay_merged.csv")
+view(sleep_records)
+
+weight_log <- read_csv("FitBit_Fitness_Tracker_Data/weightLogInfo_merged.csv")
+view(weight_log)
+```
+
+The files are previewed:
+
+```{r Previewing the files, warning=FALSE}
+glimpse(daily_activity)
+str(daily_activity)
+head(daily_activity)
+
+glimpse(daily_intensity)
+str(daily_intensity)
+head(daily_intensity)
+
+glimpse(sleep_records)
+str(sleep_records)
+head(sleep_records)
+
+glimpse(weight_log)
+str(weight_log)
+head(weight_log)
+```
+
+```{r Checking completeness of data files, warning=FALSE}
+n_distinct(daily_activity$Id)
+n_distinct(daily_intensity$Id)
+n_distinct(sleep_records$Id)
+n_distinct(weight_log$Id)
+```
+
+```{r Checking the files for duplicated records, warning=FALSE}
+sum(duplicated(daily_activity))
+sum(duplicated(daily_intensity))
+sum(duplicated(sleep_records))
+```
+
+```{r Removing the duplicates from the sleep_records which had 3 duplicates, warning=FALSE}
+sleep_records <- sleep_records %>%
+  distinct()
+```
+
+```{r Confirming the removal of duplicate records from sleep_records, warning=FALSE}
+glimpse(sleep_records)
+```
+
+### Formatting the date/date-time records accordingly
+```{r For the sleep records, warning=FALSE}
+sleep_records$SleepDay = as.POSIXct(sleep_records$SleepDay, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+glimpse(sleep_records)
+```
+
+```{r For the daily_activity, warning=FALSE}
+daily_activity$ActivityDate=as.POSIXct(daily_activity$ActivityDate, format="%m/%d/%Y", tz=Sys.timezone())
+```
+
+```{r For the daily_intensity, warning=FALSE}
+daily_intensity$ActivityDay=as.POSIXct(daily_intensity$ActivityDay, format="%m/%d/%Y", tz=Sys.timezone())
+```
+
+### Renaming all Id and dates columns to enable joins
+```{r Renaming daily_activity columns, warning=FALSE}
+daily_activity <- daily_activity %>% 
+  rename(date = ActivityDate)
+``` 
+
+``` {r Renaming daily_intensity columns, warning=FALSE}
+daily_intensity <- daily_intensity %>%
+  rename(date = ActivityDay)
+```
+
+``` {r Renaming sleep_records columns, warning=FALSE}
+sleep_records <- sleep_records %>%
+rename(date = SleepDay)
+```
+
+### Cleaning column names and changing case to lower case
+``` {r Cleaning column names of daily_activity, warning=FALSE}
+clean_names(daily_activity) 
+daily_activity <- rename_with(daily_activity, tolower)
+```
+
+``` {r Cleaning column names of daily_intensity, warning=FALSE}
+clean_names(daily_intensity) 
+daily_intensity <- rename_with(daily_intensity, tolower)
+```
+
+``` {r Cleaning column names of sleep_records, warning=FALSE}
+clean_names(sleep_records) 
+sleep_records <- rename_with(sleep_records, tolower)
+```
+
+### Joining datasets for further analysis 
+``` {r Joining the daily_activity and sleep_records dataframes, warning=FALSE}
+joined_data <- merge(daily_activity, sleep_records, by=c("id", "date"))
+```
+
+``` {r Previewing the joined dataset, warning=FALSE}
+colnames(joined_data)
+str(joined_data) 
+glimpse(joined_data) 
+head(joined_data)
+```
+
+``` {r Organizing data by users and date, and defining days of the week, warning=FALSE}
+joined_data_org <- joined_data %>% 
+  group_by(id, date) %>%
+  mutate(weekday = weekdays(date))
+```
+
+``` {r Defining the weekday order and previewing the modified dataset, warning=FALSE} 
+joined_data_org$weekday <- factor(joined_data_org$weekday, 
+                                  levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+"Saturday"))
+
+head(joined_data_org) 
+view(joined_data_org)
+```
+
+# Analyze and Share Phases
+## Analysis and Summary
+
+``` {r Looking at the summary data, warning=FALSE}
+joined_data_org %>% drop_na() %>% 
+  summary()
+```
+
+``` {r Grouping the customers based on activity levels, warning=FALSE}
+daily_averages <- joined_data_org %>% 
+  group_by (id) %>% 
+  summarise(avg_daily_steps= mean(totalsteps), 
+            avg_daily_cal=mean(calories), 
+            avg_daily_sleep= mean(totalminutesasleep)) %>%
+  mutate(user_segment = case_when( avg_daily_steps < 5000 ~ "Sedentary",
+                                   avg_daily_steps >= 5000 & avg_daily_steps < 7500 ~ "Lightly Active",
+                                   avg_daily_steps >= 7500 & avg_daily_steps < 10000 ~ "Fairly Active",
+                                   avg_daily_steps >= 10000 ~ "Very Active"))
+
+daily_averages$user_segment <- factor(daily_averages$user_segment, 
+                                      levels = c("Sedentary", "Lightly Active", "Fairly Active", "Very Active"))
+
+head(daily_averages) 
+view(daily_averages)
+```
+#### Observations from summary data:
+- Users take an average of 8,515 steps daily. Which is lower than the 10,000 steps recommended by the CDC as the ideal rate for lower mortality
+- Users spend an average of 419.2 minutes (6.99 hours) asleep. They also spend an average of 712.1 minutes (11.87 hours) in sedentary activity. This implies a cumulative average of about 1,131.3 minutes (18.86 hours) of low to no activity per day.
+- The average number of calories burnt per user is about 2,389
+- Most entries are logged midweek (Tuesday, Wednesday, Thursday) whilst Sundays and Mondays have the least entries
+
+``` {r Visualizing the segment distribution of customers, warning=FALSE}
+ggplot(daily_averages, aes(user_segment, fill = user_segment)) + geom_bar() + labs(title = "Segment distribution of users", x = "User segment", y = "No. of users")
+```
+
+``` {r Finding percentages of total for each user segment, warning=FALSE}
+user_group_percent <- daily_averages %>% 
+  group_by(user_segment) %>%
+  summarise(total= n()) %>% 
+  mutate(total_percent = scales::percent(total/sum(total)))
+
+head(user_group_percent)
+```
+#### Notes from user segments
+- A higher number of users within the "Fairly Active" segment, that is, they take between 7,500 and 10,000 steps on average. The rest are distributed equally among the other 3 segments.
+
+### Visualizing relationships between variables
+#### Relationships between Variables and Sleep
+``` {r Total steps and Total Minutes Asleep, warning=FALSE}
+ggplot(joined_data_org, aes(totalsteps,totalminutesasleep, color = totalsteps)) + geom_point() + geom_smooth() + geom_jitter() + labs(title ="Relationship between Total Steps and Total Minutes Asleep", x = "Total Steps", y = "Total Minutes Asleep") + stat_cor(method = "pearson")
+```
+
+``` {r Very Active Minutes and Sleep, warning=FALSE}
+ggplot(joined_data_org, aes(veryactiveminutes, totalminutesasleep)) + geom_point() + geom_smooth() + labs(title = "Relationship between Very Active Minutes and Sleep", x = "Very Active Minutes", y = "Sleep") + stat_cor(method = "pearson")
+```
+
+``` {r Fairly Active Minutes and Sleep, warning=FALSE}
+ggplot(joined_data_org, aes(fairlyactiveminutes, totalminutesasleep)) + geom_point() + geom_smooth() + labs(title = "Relationship between Fairly Active Minutes and Sleep", x = "Fairly Active Minutes", y = "Sleep") + stat_cor(method = "pearson")
+``` 
+
+``` {r Lightly Active Minutes and Sleep, warning=FALSE}
+ggplot(joined_data_org, aes(lightlyactiveminutes, totalminutesasleep)) + geom_point() + geom_smooth() + labs(title = "Relationship between Lightly Active Minutes and Sleep", x = "Lightly Active Minutes", y = "Sleep") + stat_cor(method = "pearson")
+```
+
+``` {r Sedentary Minutes and Sleep, warning=FALSE}
+ggplot(joined_data_org, aes(sedentaryminutes, totalminutesasleep)) + geom_point() + geom_smooth() + labs(title = "Relationship between Sedentary Minutes and Sleep", x = "Sedentary Minutes", y = "Sleep") + stat_cor(method = "pearson")
+``` 
+
+##### Analysis of Relationships between Variables and Sleep
+- At the macro level, total steps has a weak negative correlation with the total minutes asleep. Here is how the various activity levels relate with total minutes asleep;
+    - Very active minutes have a weak negative correlation with total minutes asleep. It is seen from the scatter plot, however, that the returns rise steadily around the 50-minute mark
+    - Fairly active minutes have a weak negative relationship with total minutes asleep, giving negative returns right from the onset, stabilizing between the 25-50 minute mark, then dipping afterward.
+    - Lightly active minutes have a very weak positive correlation with total minutes asleep, with the returns only dipping between 150-250 minutes, then increasing steadily afterward.
+    - Sedentary minutes have a moderate negative relationship with total minutes asleep
+
+
+#### Relationships between Variables and Calories
+``` {r Total steps and calories, warning=FALSE}
+ggplot(joined_data_org, aes(totalsteps,calories, color = calories)) + geom_point() + geom_smooth() + geom_jitter() + labs(title ="Relationship between Total Steps and Calories", x = "Total Steps", y = "Calories") + stat_cor(method = "pearson") + scale_color_gradient(high = "green")
+```
+
+``` {r Very Active Minutes and Calories, warning=FALSE}
+ggplot(joined_data_org, aes(veryactiveminutes, calories)) + geom_point() + geom_smooth() + labs(title = "Relationship between Very Active Minutes and Calories", x = "Very Active Minutes", y = "Calories") + stat_cor(method = "pearson")
+```
+
+``` {r Fairly Active Minutes and Calories, warning=FALSE}
+ggplot(joined_data_org, aes(fairlyactiveminutes, calories)) + geom_point() + geom_smooth() + labs(title = "Relationship between Fairly Active Minutes and Calories", x = "Fairly Active Minutes", y = "Calories") + stat_cor(method = "pearson")
+```
+
+``` {r Lightly Active Minutes and Calories, warning=FALSE}
+ggplot(joined_data_org, aes(lightlyactiveminutes, calories)) + geom_point() + geom_smooth() + labs(title = "Relationship between Lightly Active Minutes and Calories", x = "Lightly Active Minutes", y = "Calories") + stat_cor(method = "pearson")
+```
+
+``` {r Sedentary Minutes and Calories, warning=FALSE}
+ggplot(joined_data_org, aes(sedentaryminutes, calories)) + geom_point() + geom_smooth() + labs(title = "Relationship between Sedentary Minutes and Calories", x = "Sedentary Minutes", y = "Calories") + stat_cor(method = "pearson")
+```
+
+##### Analysis of the Relationships between Variables and Calories
+- OVerall, total steps taken has a positive relationship with calories burnt. It is however worthy of note that per the scatterplot, the the gains from total steps dip between 10,000 and 12,000 steps before picking up gains on calories burnt.
+- Very active (moderate) and fairly active minutes (Weak) both have positive relationships with calories burnt. From the plots, it is seen that most gains are made from very active minutes after the 50-minute mark despite a dip between 20 and 40 minutes. Fairly active minutes has diminishing returns after the 75-minute mark.
+- Lightly active minutes have a positive relationship with calories burnt. Most gains are made within the first 150 minutes before reducing till the 200-minute mark where it then stabilizes and begins to increase steadily.
+- Sedentary minutes have a very weak positive correlation with calories burnt, with returns diminishing with time after the 500-minute mark.
+
+
+### Activity Levels by Days of the Week
+``` {r Defining a variable for activity levels across weekdays, warning=FALSE}
+weekday_activity <- joined_data_org %>% 
+  select(weekday, 
+         totalsteps, 
+         totaldistance, 
+         totalminutesasleep) %>% 
+  group_by(weekday) %>% summarise(totalsteps = sum(totalsteps), 
+                                  totaldistance = sum(totaldistance), 
+                                  totalminutesasleep = sum(totalminutesasleep))
+
+head(weekday_activity)
+```
+
+``` {r Visualizing the distribution of activity levels across weekdays, warning=FALSE}
+ggplot(weekday_activity, aes(weekday, totalsteps, fill = totalsteps)) + geom_col() + scale_fill_gradient(high = "green") + labs(title = "Distribution of Activity Levels across weekdays", x = "Weekday", y = "Total Steps")
+```
+
+``` {r Visualizing the distribution of time asleep across weekdays, warning=FALSE}
+ggplot(weekday_activity, aes(weekday, totalminutesasleep, fill = totalminutesasleep)) + geom_col() + scale_fill_gradient(high = "blue") + labs(title = "Distribution of Time Asleep Across Weekdays", x = "Weekday", y = "Total Minutes Asleep")
+```
+
+#### Notes from the Distributions on Activity Levels by Day of the Week
+- Tuesdays and Saturdays are the most active days of the week by total steps whilst Sundays and Mondays are the least active.
+- Wednesdays and Tuesdays also have the most recorded total time asleep whilst Mondays have the least.
+
+# Act Phase
+## Recommendations
+Based on the notes and analysis from the statistics, relationships and distributions above, the following recommendations are made to Bellabeat to inform their marketing strategy:
+
+- Weight logging records are the least in the dataset. It is recommended that Bellabeat finds out why from the users, and makes weight logging and related variables easier and accessible for users
+- For logging of sleep records, devices should be made such that users are encouraged to wear it to bed and/or are not inconvenienced when wearing them for extended periods. This way, more data can be collected on their sleeping habits and better decisions can be made based on the consolidated data
+- Users take an average of 8,500 steps per day, much less than the recommended 10,000 steps by health experts. The analysis also shows that gains on calories burnt increase or decrease at some time points during the various activity levels. The devices should be made such that, goals are set and notifications given to users to encourage them to split their time and activity levels on average to make the most of each type of activity level.
+- The above must also give recourse to the relationships between the variables and minutes asleep; activity levels and minutes spent during the various activity levels should be managed such that users are able to improve the quantity and quality of total time asleep (while cutting the difference between total time in bed and total time asleep)
+- Adverts and promotions can create notional incentives for extended periods of high activity rather than fair levels of activity, whilst advising on the reduction in sedentary minutes by users as it has negative returns on both calories (and sleep).
+
+# End
+Thank you for reading!
